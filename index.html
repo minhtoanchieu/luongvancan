@@ -1,3 +1,328 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Smart Canteen - Đặt Món Trực Tuyến</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    @keyframes pulse-ring {
+      0% { transform: scale(0.95); opacity: 0.8; }
+      50% { transform: scale(1.03); opacity: 1; }
+      100% { transform: scale(0.95); opacity: 0.8; }
+    }
+    .animate-ready { animation: pulse-ring 2s infinite ease-in-out; }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen pb-20 font-sans">
+
+  <!-- ================= TOP APP BAR ================= -->
+  <header class="sticky top-0 z-40 bg-slate-900/95 backdrop-blur-md border-b border-slate-800 px-4 py-3 flex items-center justify-between shadow-lg">
+    <div class="flex items-center gap-2.5">
+      <div class="w-9 h-9 bg-amber-500 rounded-xl flex items-center justify-center text-slate-950 font-black shadow-lg shadow-amber-500/20">
+        <i class="fa-solid fa-utensils"></i>
+      </div>
+      <div>
+        <h1 id="topCanteenName" class="text-sm font-black tracking-wide uppercase text-white">Smart Canteen</h1>
+        <p id="topCanteenSubtitle" class="text-[10px] text-slate-400 truncate max-w-[200px]">Đang mở cửa phục vụ</p>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-2">
+      <!-- Nút mở giỏ hàng -->
+      <button onclick="openCartModal()" class="relative p-2.5 bg-slate-800 hover:bg-slate-700 rounded-xl text-amber-400 transition">
+        <i class="fa-solid fa-cart-shopping text-base"></i>
+        <span id="cartBadgeCount" class="hidden absolute -top-1 -right-1 w-5 h-5 bg-red-600 text-white font-bold text-[10px] rounded-full flex items-center justify-center shadow">0</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- ================= MAIN CONTAINER ================= -->
+  <main class="max-w-3xl mx-auto p-4">
+
+    <!-- ================= TAB 1: THỰC ĐƠN (MENU) ================= -->
+    <section id="tabViewMenu" class="space-y-4">
+      <!-- Thanh tìm kiếm -->
+      <div class="relative">
+        <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-slate-500 text-sm"></i>
+        <input type="text" id="menuSearchInput" oninput="handleFilterMenu()" placeholder="Tìm món ăn, đồ uống..." class="w-full bg-slate-800 border border-slate-700 rounded-xl pl-10 pr-4 py-2.5 text-xs text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-amber-500">
+      </div>
+
+      <!-- Bộ lọc danh mục -->
+      <div id="categoryFilterContainer" class="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+        <button onclick="selectCategory('ALL')" class="cat-pill px-3.5 py-1.5 rounded-xl text-xs font-bold bg-amber-500 text-slate-950 whitespace-nowrap transition">Tất Cả</button>
+      </div>
+
+      <!-- Danh sách món ăn -->
+      <div id="menuGrid" class="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-1">
+        <div class="col-span-full text-center py-12 text-slate-500 text-xs">
+          <i class="fa-solid fa-spinner fa-spin text-2xl text-amber-500 mb-2"></i>
+          <p>Đang tải thực đơn hôm nay...</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= TAB 2: ĐƠN CỦA TÔI (THEO DÕI ĐƠN HÀNG - ĐỒNG BỘ 30S) ================= -->
+    <section id="tabViewOrders" class="hidden space-y-4">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-base font-black uppercase text-amber-400 tracking-wide flex items-center gap-2">
+            <i class="fa-solid fa-clock-rotate-left"></i> Đơn Hàng Của Bạn
+          </h2>
+          <p class="text-[11px] text-emerald-400 font-medium flex items-center gap-1.5 mt-0.5">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+            Tự động đồng bộ mỗi 30 giây
+          </p>
+        </div>
+        <button onclick="loadCustomerOrders(false, false)" class="p-2 bg-slate-800 hover:bg-slate-700 text-amber-400 rounded-xl text-xs font-bold flex items-center gap-1 transition">
+          <i class="fa-solid fa-rotate-right"></i> Làm mới
+        </button>
+      </div>
+
+      <!-- Thanh tra cứu nhanh theo mã đơn / số điện thoại -->
+      <div class="bg-slate-800/80 border border-slate-700/80 rounded-2xl p-3 flex gap-2">
+        <input type="text" id="searchOrderInput" placeholder="Nhập mã đơn (VD: #105) hoặc Số điện thoại..." class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white outline-none focus:ring-2 focus:ring-amber-500">
+        <button onclick="loadCustomerOrders(true, false)" class="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-xl text-xs font-black transition">Tra Cứu</button>
+      </div>
+
+      <!-- Danh sách đơn hàng -->
+      <div id="ordersListContainer" class="space-y-3">
+        <div class="text-center py-12 text-slate-500 text-xs">Đang kiểm tra đơn hàng...</div>
+      </div>
+    </section>
+
+    <!-- ================= TAB 3: TÀI KHOẢN & HẠN MỨC (PROFILE) ================= -->
+    <section id="tabViewAccount" class="hidden space-y-4">
+
+      <!-- KHỐI KHI ĐÃ ĐĂNG NHẬP -->
+      <div id="accountLoggedInBox" class="hidden space-y-4">
+        <!-- Thông tin cá nhân -->
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl p-5 shadow-lg flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="w-12 h-12 bg-amber-500/20 text-amber-400 border border-amber-500/40 rounded-2xl flex items-center justify-center text-xl font-black">
+              <i class="fa-solid fa-user-graduate"></i>
+            </div>
+            <div>
+              <h3 id="profileFullName" class="font-extrabold text-white text-base">Họ và tên</h3>
+              <p id="profileEmail" class="text-xs text-slate-400 font-mono mt-0.5">email@school.edu.vn</p>
+              <span id="profilePhone" class="text-[11px] text-amber-400 font-semibold">0901234567</span>
+            </div>
+          </div>
+          <button onclick="handleLogout()" class="px-3 py-1.5 bg-red-600/20 text-red-400 border border-red-600/30 rounded-xl text-xs font-bold hover:bg-red-600 hover:text-white transition">
+            Đăng xuất
+          </button>
+        </div>
+
+        <!-- HẠN MỨC CHI TIÊU HÀNG NGÀY (DAILY LIMIT) -->
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl p-5 shadow-lg space-y-3">
+          <div class="flex items-center justify-between">
+            <h4 class="text-xs font-black uppercase text-amber-400 tracking-wider flex items-center gap-2">
+              <i class="fa-solid fa-wallet"></i> Hạn Mức Chi Tiêu / Ngày (DAILY_LIMIT)
+            </h4>
+            <span id="currentDailyLimitBadge" class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">Không giới hạn</span>
+          </div>
+          <p class="text-xs text-slate-400 leading-relaxed">
+            Bạn có thể tự đặt số tiền tối đa được phép chi tiêu trong ngày. Khi đặt món, nếu vượt quá hạn mức này hệ thống sẽ tự động nhắc nhở và ngăn chặn. <i>(Nhập 0 để tắt giới hạn)</i>.
+          </p>
+          <div class="flex gap-2">
+            <input type="number" id="inputNewDailyLimit" placeholder="VD: 50000 (0 là không giới hạn)" class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white outline-none focus:ring-2 focus:ring-amber-500">
+            <button onclick="handleSaveDailyLimit()" id="btnSaveDailyLimit" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition">Lưu Hạn Mức</button>
+          </div>
+        </div>
+
+        <!-- ĐỔI MẬT KHẨU -->
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl p-5 shadow-lg space-y-3">
+          <h4 class="text-xs font-black uppercase text-amber-400 tracking-wider flex items-center gap-2">
+            <i class="fa-solid fa-key"></i> Đổi Mật Khẩu
+          </h4>
+          <form onsubmit="handleChangePassword(event)" class="space-y-2.5">
+            <input type="password" id="changeOldPass" required placeholder="Mật khẩu hiện tại" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white outline-none focus:ring-2 focus:ring-amber-500">
+            <input type="password" id="changeNewPass" required minlength="6" placeholder="Mật khẩu mới (tối thiểu 6 ký tự)" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white outline-none focus:ring-2 focus:ring-amber-500">
+            <button type="submit" id="btnChangePassSubmit" class="w-full py-2 bg-slate-700 hover:bg-slate-600 text-white font-bold rounded-xl text-xs transition">Lưu Mật Khẩu Mới</button>
+          </form>
+        </div>
+      </div>
+
+      <!-- KHỐI KHI CHƯA ĐĂNG NHẬP -->
+      <div id="accountLoggedOutBox" class="space-y-4">
+        <div id="loginFormBox" class="bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-lg space-y-4">
+          <div class="text-center space-y-1">
+            <h3 class="text-base font-black uppercase text-white">Đăng Nhập Khách Hàng</h3>
+            <p class="text-xs text-slate-400">Dành cho học sinh & phụ huynh</p>
+          </div>
+          <form onsubmit="handleLoginSubmit(event)" class="space-y-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1">Email hoặc Số điện thoại</label>
+              <input type="text" id="loginAccount" required placeholder="student@school.edu.vn" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-xs text-white outline-none focus:ring-2 focus:ring-amber-500">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1">Mật khẩu</label>
+              <input type="password" id="loginPassword" required placeholder="••••••••" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-xs text-white outline-none focus:ring-2 focus:ring-amber-500">
+            </div>
+            <div class="flex justify-between items-center text-xs">
+              <button type="button" onclick="showRegisterView()" class="text-amber-400 font-semibold hover:underline">Chưa có tài khoản? Đăng ký</button>
+              <button type="button" onclick="showForgotView()" class="text-slate-400 hover:text-white">Quên mật khẩu?</button>
+            </div>
+            <button type="submit" id="btnLoginSubmit" class="w-full py-3 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-xl text-xs uppercase tracking-wider transition shadow-lg shadow-amber-500/20">
+              Đăng Nhập
+            </button>
+          </form>
+        </div>
+
+        <div id="registerFormBox" class="hidden bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-lg space-y-4">
+          <div class="flex items-center justify-between border-b border-slate-700 pb-2">
+            <h3 class="text-sm font-black uppercase text-white">Đăng Ký Tài Khoản Khách Hàng</h3>
+            <button type="button" onclick="showLoginView()" class="text-slate-400 hover:text-white text-xs"><i class="fa-solid fa-xmark"></i></button>
+          </div>
+          <form onsubmit="handleRegisterSubmit(event)" class="space-y-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1">Họ và tên</label>
+              <input type="text" id="regFullName" required placeholder="Nguyễn Văn A" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white outline-none focus:ring-2 focus:ring-amber-500">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1">Số điện thoại</label>
+              <input type="tel" id="regPhone" required placeholder="0901234567" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white outline-none focus:ring-2 focus:ring-amber-500">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1">Email chính chủ</label>
+              <div class="flex gap-2">
+                <input type="email" id="regEmail" required placeholder="student@school.edu.vn" class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white outline-none focus:ring-2 focus:ring-amber-500">
+                <button type="button" onclick="sendRegisterOTPAction()" id="btnSendRegOTP" class="px-3 py-2 bg-slate-700 hover:bg-slate-600 text-amber-400 font-bold rounded-xl text-xs whitespace-nowrap">Gửi OTP</button>
+              </div>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1">Mã OTP 6 số từ Email</label>
+              <input type="text" id="regOTP" maxlength="6" required placeholder="123456" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-amber-400 font-mono tracking-widest text-center outline-none">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1">Mật khẩu</label>
+              <input type="password" id="regPassword" required minlength="6" placeholder="Tối thiểu 6 ký tự" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white outline-none focus:ring-2 focus:ring-amber-500">
+            </div>
+            <button type="submit" id="btnRegisterSubmit" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs uppercase tracking-wider transition">
+              Xác Nhận Tạo Tài Khoản
+            </button>
+          </form>
+        </div>
+
+        <div id="forgotFormBox" class="hidden bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-lg space-y-4">
+          <div class="flex items-center justify-between border-b border-slate-700 pb-2">
+            <h3 class="text-sm font-black uppercase text-white">Quên Mật Khẩu Qua Email</h3>
+            <button type="button" onclick="showLoginView()" class="text-slate-400 hover:text-white text-xs"><i class="fa-solid fa-xmark"></i></button>
+          </div>
+          <form onsubmit="handleForgotSubmit(event)" class="space-y-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1">Email đăng ký</label>
+              <div class="flex gap-2">
+                <input type="email" id="forgotEmail" required placeholder="student@school.edu.vn" class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white outline-none focus:ring-2 focus:ring-amber-500">
+                <button type="button" onclick="sendForgotOTPAction()" id="btnSendForgotOTP" class="px-3 py-2 bg-slate-700 hover:bg-slate-600 text-amber-400 font-bold rounded-xl text-xs whitespace-nowrap">Gửi OTP</button>
+              </div>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1">Mã OTP 6 số</label>
+              <input type="text" id="forgotOTP" maxlength="6" required placeholder="123456" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-amber-400 font-mono tracking-widest text-center outline-none">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1">Mật khẩu mới</label>
+              <input type="password" id="forgotNewPassword" required minlength="6" placeholder="Nhập mật khẩu mới" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white outline-none focus:ring-2 focus:ring-amber-500">
+            </div>
+            <button type="submit" id="btnForgotSubmit" class="w-full py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl text-xs uppercase tracking-wider transition">
+              Đặt Lại Mật Khẩu
+            </button>
+          </form>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ================= MODAL GIỎ HÀNG & ĐẶT MÓN (CHECKOUT) ================= -->
+  <div id="cartModal" class="fixed inset-0 bg-black/80 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 hidden">
+    <div class="bg-slate-800 w-full max-w-lg rounded-t-3xl sm:rounded-3xl p-5 border border-slate-700 space-y-4 max-h-[90vh] overflow-y-auto">
+      
+      <div class="flex items-center justify-between border-b border-slate-700 pb-3">
+        <h3 class="font-black text-white text-base flex items-center gap-2">
+          <i class="fa-solid fa-basket-shopping text-amber-400"></i> Giỏ Hàng Của Bạn
+        </h3>
+        <button onclick="closeCartModal()" class="text-slate-400 hover:text-white p-1"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+
+      <div id="cartItemsList" class="space-y-2 max-h-48 overflow-y-auto divide-y divide-slate-700/50 pr-1"></div>
+
+      <div class="flex justify-between items-center py-2 border-t border-b border-slate-700 font-bold text-sm">
+        <span class="text-slate-300">Tổng thanh toán:</span>
+        <span id="cartTotalDisplay" class="text-emerald-400 text-lg font-black">0 ₫</span>
+      </div>
+
+      <div class="space-y-3">
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-[11px] font-semibold text-slate-300 mb-1">Tên khách hàng</label>
+            <input type="text" id="orderCustName" required placeholder="Tên của bạn" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white outline-none focus:ring-2 focus:ring-amber-500">
+          </div>
+          <div>
+            <label class="block text-[11px] font-semibold text-slate-300 mb-1">Số điện thoại</label>
+            <input type="tel" id="orderCustPhone" required placeholder="0901234567" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white outline-none focus:ring-2 focus:ring-amber-500">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-[11px] font-semibold text-slate-300 mb-1">Hẹn giờ lấy món</label>
+            <select id="orderPickupTime" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white outline-none focus:ring-2 focus:ring-amber-500">
+              <option value="Ngay bây giờ">Ngay bây giờ</option>
+              <option value="Sau 10 phút">Sau 10 phút</option>
+              <option value="Sau 15 phút">Sau 15 phút</option>
+              <option value="Sau 30 phút">Sau 30 phút</option>
+              <option value="Giờ ra chơi sáng">Giờ ra chơi sáng</option>
+              <option value="Giờ ăn trưa">Giờ ăn trưa</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-[11px] font-semibold text-slate-300 mb-1">Thanh toán</label>
+            <select id="orderPaymentMethod" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white outline-none focus:ring-2 focus:ring-amber-500">
+              <option value="Tiền mặt tại quầy">Tiền mặt tại quầy</option>
+              <option value="Quét mã VietQR">Quét mã VietQR</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Ô NHẬP GHI CHÚ BẾP -->
+        <div>
+          <label class="block text-[11px] font-bold text-amber-400 mb-1 flex items-center gap-1">
+            <i class="fa-solid fa-note-sticky"></i> Ghi chú cho bếp (Lưu vào đơn hàng)
+          </label>
+          <textarea id="orderKitchenNotes" rows="2" placeholder="Ví dụ: Không cay, nhiều rau, ít cơm, không hành..." class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-xs text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-amber-500"></textarea>
+        </div>
+
+        <button onclick="handlePlaceOrderSubmit()" id="btnSubmitPlaceOrder" class="w-full py-3 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-2xl text-xs uppercase tracking-wider transition shadow-lg shadow-amber-500/30 flex items-center justify-center gap-2">
+          <span>Đặt Món Ngay</span>
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ================= BOTTOM NAVIGATION BAR ================= -->
+  <nav class="fixed bottom-0 left-0 right-0 z-40 bg-slate-950/95 backdrop-blur-md border-t border-slate-800 px-4 py-2">
+    <div class="max-w-md mx-auto grid grid-cols-3 gap-1">
+      <button onclick="switchTab('menu')" id="btnNavMenu" class="py-1.5 rounded-xl flex flex-col items-center justify-center text-amber-400 font-bold text-[11px] transition">
+        <i class="fa-solid fa-utensils text-base mb-1"></i>
+        <span>Thực Đơn</span>
+      </button>
+      <button onclick="switchTab('orders')" id="btnNavOrders" class="relative py-1.5 rounded-xl flex flex-col items-center justify-center text-slate-400 font-bold text-[11px] hover:text-white transition">
+        <i class="fa-solid fa-clock-rotate-left text-base mb-1"></i>
+        <span>Đơn Của Tôi</span>
+        <span id="navActiveOrderDot" class="hidden absolute top-1 right-8 w-2 h-2 bg-emerald-400 rounded-full animate-ping"></span>
+      </button>
+      <button onclick="switchTab('account')" id="btnNavAccount" class="py-1.5 rounded-xl flex flex-col items-center justify-center text-slate-400 font-bold text-[11px] hover:text-white transition">
+        <i class="fa-solid fa-user text-base mb-1"></i>
+        <span>Tài Khoản</span>
+      </button>
+    </div>
+  </nav>
 <!-- ================= JAVASCRIPT ================= -->
   <script>
     // BẠN CẦN THAY THẾ CHUỖI NÀY BẰNG URL WEB APP CỦA GOOGLE APPS SCRIPT
