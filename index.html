@@ -435,7 +435,7 @@
               <h4 class="font-extrabold text-white text-xs line-clamp-1">${it.name}</h4>
               <div class="flex items-center justify-between mt-1">
                 <p class="text-[11px] text-amber-400 font-black">${Number(it.price).toLocaleString('vi-VN')} ₫</p>
-                <span class="text-[10px] ${isOutOfStock ? 'text-red-400 font-bold' : (stockCount <= 5 ? 'text-amber-400 font-semibold' : 'text-slate-400')}">Tồn: ${stockCount}</span>
+                <span class="text-[10px] ${isOutOfStock ? 'text-red-400 font-bold' : (stockCount <= 5 ? 'text-amber-400 font-semibold' : 'text-slate-400')}"></span>
               </div>
             </div>
             ${actionBtn}
